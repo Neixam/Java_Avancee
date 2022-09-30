@@ -4,28 +4,64 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class StreamEditor {
-  private final LineDeleteCommand lineDeleteCommand;
+  @FunctionalInterface
+  public interface Command {
+    Action deleteOrPrint(String line, int numLine);
+
+    default Command andThen(Command command) {
+      Objects.requireNonNull(command);
+      return (line, numLine) -> {
+        return switch (this.deleteOrPrint(line, numLine)) {
+          case Action.PrintAction(String text) -> command.deleteOrPrint(text, numLine);
+          case Action.DeleteAction delete -> delete;
+        };
+      };
+    }
+  }
+  private sealed interface Action {
+    enum DeleteAction implements Action {
+      INSTANCE
+    }
+    record PrintAction(String text) implements Action {}
+  }
+  private final Command command;
   public StreamEditor() {
-    lineDeleteCommand = new LineDeleteCommand(0);
+    this((line, numLine) -> new Action.PrintAction(line));
   }
 
-  public StreamEditor(LineDeleteCommand lineDeleteCommand) {
-    this.lineDeleteCommand = lineDeleteCommand;
+  public StreamEditor(Command command) {
+    Objects.requireNonNull(command);
+    this.command = command;
   }
   public void transform(LineNumberReader lineNumberReader, Writer writer) throws IOException {
     Objects.requireNonNull(lineNumberReader);
     Objects.requireNonNull(writer);
     for (var line = lineNumberReader.readLine(); line != null; line = lineNumberReader.readLine()) {
-      if (lineNumberReader.getLineNumber() != lineDeleteCommand.numLine()) {
-        writer.append(line).append('\n');
+      switch (command.deleteOrPrint(line, lineNumberReader.getLineNumber())) {
+        case Action.PrintAction(String text) -> writer.append(text).append('\n');
+        case Action.DeleteAction ignored -> {}
       }
     }
   }
 
-  public static LineDeleteCommand lineDelete(int numLine) {
-    return new LineDeleteCommand(numLine);
+  public static Command substitute(Pattern pattern, String remplacement) {
+    Objects.requireNonNull(pattern);
+    Objects.requireNonNull(remplacement);
+    return (line, numLine) -> new Action.PrintAction(pattern.matcher(line).replaceAll(remplacement));
+  }
+  public static Command lineDelete(int numLine) {
+    if (numLine < 0) {
+      throw new IllegalArgumentException("Negative value are forbidden");
+    }
+    return (line, numLine2) -> (numLine2 == numLine) ? Action.DeleteAction.INSTANCE : new Action.PrintAction(line);
+  }
+
+  public static Command findAndDelete(Pattern pattern) {
+    Objects.requireNonNull(pattern);
+    return (line, numLine) -> (pattern.matcher(line).find()) ? Action.DeleteAction.INSTANCE : new Action.PrintAction(line);
   }
 
   public static void main(String[] args) {

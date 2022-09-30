@@ -204,7 +204,6 @@ public class StreamEditorTest {
       assertTrue(Modifier.isPrivate(action.getModifiers()));
     }
   }
-/*
 
   @Nested
   public class Q5 {
@@ -433,5 +432,4 @@ public class StreamEditorTest {
       assertThrows(NullPointerException.class, () -> StreamEditor.lineDelete(10).andThen(null));
     }
   }
-*/
 }

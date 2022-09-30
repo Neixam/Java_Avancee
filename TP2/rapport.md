@@ -144,11 +144,272 @@ public class StreamEditor {
 
 4. On souhaite introduire une nouvelle commande qui permet de supprimer une ligne si elle contient une expression régulière. Avant de coder cela, on va faire un peu de re-factoring pour préparer le fait que l'on puisse avoir plusieurs commandes.
    L'idée est que, pour chaque commande, on appelle celle-ci avec la ligne courante et le numéro de ligne et la commande nous renvoie une action à effectuer. L'action peut être soit DELETE pour indiquer que la ligne ne doit pas être affichée, soit PRINT pour indiquer que la ligne doit être affichée.
+
+```java
+public class StreamEditor {
+   private enum Action {
+      DELETE, PRINT
+   }
+   
+   public Action deleteOrPrint(String line, int numLine) {
+      if (lineDeleteCommand.numLine() == numLine) {
+         return Action.DELETE;
+      }
+      return Action.PRINT;
+   }
+
+   public void transform(LineNumberReader lineNumberReader, Writer writer) throws IOException {
+      Objects.requireNonNull(lineNumberReader);
+      Objects.requireNonNull(writer);
+      for (var line = lineNumberReader.readLine(); line != null; line = lineNumberReader.readLine()) {
+         if (deleteOrPrint(line, lineNumberReader.getLineNumber()) == Action.PRINT) {
+            writer.append(line).append('\n');
+         }
+      }
+   }
+}
+```
+
 5. Maintenant que l'on a bien préparé le terrain, on peut ajouter une nouvelle commande renvoyée par la méthode findAndDelete qui prend en paramètre un java.util.regex.Pattern telle que le code suivant fonctionne
+
+```java
+public interface Command {
+   boolean deleteOrPrint(String line, int numLine);
+}
+
+public record FindAndDeleteCommand(Pattern pattern) implements Command {
+   public FindAndDeleteCommand {
+      Objects.requireNonNull(pattern);
+   }
+
+   @Override
+   public boolean deleteOrPrint(String line, int numLine) {
+      return pattern.matcher(line).find();
+   }
+}
+
+public record LineDeleteCommand(int numLine) implements Command {
+   public LineDeleteCommand {
+      if (numLine < 0) {
+         throw new IllegalArgumentException("Negative line impossible");
+      }
+   }
+
+   @Override
+   public boolean deleteOrPrint(String line, int numLine) {
+      return numLine == this.numLine;
+   }
+}
+
+public class StreamEditor {
+   private final Command command;
+
+   public Action deleteOrPrint(String line, int numLine) {
+      if (command.deleteOrPrint(line, numLine)) {
+         return Action.DELETE;
+      }
+      return Action.PRINT;
+   }
+
+   public StreamEditor(Command command) {
+      Objects.requireNonNull(command);
+      this.command = command;
+   }
+
+   public void transform(LineNumberReader lineNumberReader, Writer writer) throws IOException {
+      Objects.requireNonNull(lineNumberReader);
+      Objects.requireNonNull(writer);
+      for (var line = lineNumberReader.readLine(); line != null; line = lineNumberReader.readLine()) {
+         if (deleteOrPrint(line, lineNumberReader.getLineNumber()) == Action.PRINT) {
+            writer.append(line).append('\n');
+         }
+      }
+   }
+
+   public static FindAndDeleteCommand findAndDelete(Pattern pattern) {
+      return new FindAndDeleteCommand(pattern);
+   }
+}
+```
+
 6. En fait, cette implantation n'est pas satisfaisante, car les records LineDeleteCommand et FindAndDeleteCommand ont beaucoup de code qui ne sert à rien. Il serait plus simple de les transformer en lambdas, car la véritable information intéressante est comment effectuer la transformation d'une ligne.
    Modifier votre code pour que les implantations des commandes renvoyées par les méthodes lineDelete et findAndDelete soit des lambdas.
    Vérifier que les tests JUnit marqués "Q6" passent.
+
+```java
+public class StreamEditor {
+   @FunctionalInterface
+   public interface Command {
+      Action deleteOrPrint(String line, int numLine);
+   }
+
+   private enum Action {
+      DELETE, PRINT
+   }
+
+   private final Command command;
+
+   public StreamEditor() {
+      command = (line, numLine) -> Action.PRINT;
+   }
+
+   public StreamEditor(Command command) {
+      Objects.requireNonNull(command);
+      this.command = command;
+   }
+
+   public void transform(LineNumberReader lineNumberReader, Writer writer) throws IOException {
+      Objects.requireNonNull(lineNumberReader);
+      Objects.requireNonNull(writer);
+      for (var line = lineNumberReader.readLine(); line != null; line = lineNumberReader.readLine()) {
+         if (command.deleteOrPrint(line, lineNumberReader.getLineNumber()) == Action.PRINT) {
+            writer.append(line).append('\n');
+         }
+      }
+   }
+
+   public static Command lineDelete(int numLine) {
+      if (numLine < 0) {
+         throw new IllegalArgumentException("Negative value are forbidden");
+      }
+      return (line, numLine2) -> (numLine2 == numLine) ? Action.DELETE : Action.PRINT;
+   }
+
+   public static Command findAndDelete(Pattern pattern) {
+      Objects.requireNonNull(pattern);
+      return (line, numLine) -> (pattern.matcher(line).find()) ? Action.DELETE : Action.PRINT;
+   }
+}
+```
+
 7. On souhaite maintenant introduire une commande substitute(pattern, replacement) qui dans une ligne remplace toutes les occurrences du motif par une chaîne de caractère de remplacement. Malheureusement, notre enum Action n'est pas à même de gérer ce cas, car il faut que la commande puisse renvoyer PRINT mais avec une nouvelle ligne.
    On se propose pour cela de remplacer l'enum Action par une interface et DELETE et PRINT par des records implantant cette interface comme ceci
+
+```java
+  private sealed interface Action {
+    default String newLine() {
+      return "";
+    }
+    record DeleteAction() implements Action {}
+    record PrintAction(String text) implements Action {
+      @Override
+      public String newLine() {
+        return text;
+      }
+    }
+  }
+```
+
 8. On peut enfin ajouter la commande substitute(pattern, replacement) telle que le code suivant fonctionne
 
+```java
+public class StreamEditor {
+   @FunctionalInterface
+   public interface Command {
+      Action deleteOrPrint(String line, int numLine);
+   }
+
+   private sealed interface Action {
+      default Optional<String> newLine() {
+         return Optional.empty();
+      }
+
+      record DeleteAction() implements Action {
+      }
+
+      record PrintAction(String text) implements Action {
+         @Override
+         public Optional<String> newLine() {
+            return Optional.of(text);
+         }
+      }
+   }
+
+   private final Command command;
+
+   public StreamEditor() {
+      this((line, numLine) -> new Action.PrintAction(line));
+   }
+
+   public StreamEditor(Command command) {
+      Objects.requireNonNull(command);
+      this.command = command;
+   }
+
+   public void transform(LineNumberReader lineNumberReader, Writer writer) throws IOException {
+      Objects.requireNonNull(lineNumberReader);
+      Objects.requireNonNull(writer);
+      for (var line = lineNumberReader.readLine(); line != null; line = lineNumberReader.readLine()) {
+         switch (command.deleteOrPrint(line, lineNumberReader.getLineNumber())) {
+            case Action.PrintAction printAction -> writer.append(printAction.text()).append('\n');
+            case Action.DeleteAction ignored -> {
+            }
+         }
+      }
+   }
+
+   public static Command substitute(Pattern pattern, String remplacement) {
+      Objects.requireNonNull(pattern);
+      Objects.requireNonNull(remplacement);
+      return (line, numLine) -> new Action.PrintAction(pattern.matcher(line).replaceAll(remplacement));
+   }
+}
+```
+
+9. Optionnellement, créer une DeleteAction avec un new semble bizarre car une DeleteAction est un record qui n'a pas de composant donc on pourrait toujours utiliser la même instance.
+   Comment faire tout en gardant le record DeleteAction pour éviter de faire un new à chaque fois que l'on veut avoir une instance de DeleteAction ?
+   En fait, il y a une façon plus élégante de faire la même chose que la précédente en transformant DeleteAction en enum (chercher "enum singleton java" sur internet).
+   Vérifier que les tests JUnit marqués "Q9" passent.
+
+On peut créer un champ static dans la classe qui sera constant et créer qu'une seule fois.
+
+```java
+public class StreamEditor {
+   private sealed interface Action {
+      enum DeleteAction implements Action {
+         INSTANCE
+      }
+
+      record PrintAction(String text) implements Action {
+      }
+   }
+   
+   public static Command lineDelete(int numLine) {
+      if (numLine < 0) {
+         throw new IllegalArgumentException("Negative value are forbidden");
+      }
+      return (line, numLine2) -> (numLine2 == numLine) ? Action.DeleteAction.INSTANCE : new Action.PrintAction(line);
+   }
+
+   public static Command findAndDelete(Pattern pattern) {
+      Objects.requireNonNull(pattern);
+      return (line, numLine) -> (pattern.matcher(line).find()) ? Action.DeleteAction.INSTANCE : new Action.PrintAction(line);
+   }
+}
+```
+
+10. Enfin, on peut vouloir combiner plusieurs commandes en ajoutant une méthode andThen à Command tel que le code suivant fonctionne.
+
+```java
+public class StreamEditor {
+   @FunctionalInterface
+   public interface Command {
+      Action deleteOrPrint(String line, int numLine);
+
+      default Command andThen(Command command) {
+         Objects.requireNonNull(command);
+         return (line, numLine) -> {
+            return switch (this.deleteOrPrint(line, numLine)) {
+               case Action.PrintAction(String text) -> command.deleteOrPrint(text, numLine);
+               case Action.DeleteAction delete -> delete;
+            };
+         };
+      }
+   }
+}
+```
+
+11. En conclusion, dans quel cas, à votre avis, va-t-on utiliser des records pour implanter de différentes façons une interface et dans quel cas va-t-on utiliser des lambdas ?
+
+À mon avis, on va utiliser des records dans le cas où on a besoin de stocker une valeur
+et utiliser un lambda lorsqu'on veut plutôt stocker un comportement.
