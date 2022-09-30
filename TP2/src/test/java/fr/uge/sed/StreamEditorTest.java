@@ -92,6 +92,7 @@ public class StreamEditorTest {
     }
   }
 
+
   @Nested
   public class Q2 {
     @Test
@@ -139,6 +140,7 @@ public class StreamEditorTest {
     @Test
     public void fieldsMustBePrivateFinal() {
       assertTrue(Arrays.stream(StreamEditor.class.getDeclaredFields())
+          .filter(field -> !Modifier.isStatic(field.getModifiers()))
           .allMatch(f -> Modifier.isPrivate(f.getModifiers()) && Modifier.isFinal(f.getModifiers())));
     }
   }
@@ -432,4 +434,5 @@ public class StreamEditorTest {
       assertThrows(NullPointerException.class, () -> StreamEditor.lineDelete(10).andThen(null));
     }
   }
+
 }

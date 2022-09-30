@@ -13,11 +13,9 @@ public class StreamEditor {
 
     default Command andThen(Command command) {
       Objects.requireNonNull(command);
-      return (line, numLine) -> {
-        return switch (this.deleteOrPrint(line, numLine)) {
-          case Action.PrintAction(String text) -> command.deleteOrPrint(text, numLine);
-          case Action.DeleteAction delete -> delete;
-        };
+      return (line, numLine) -> switch (this.deleteOrPrint(line, numLine)) {
+        case Action.PrintAction(String text) -> command.deleteOrPrint(text, numLine);
+        case Action.DeleteAction delete -> delete;
       };
     }
   }
