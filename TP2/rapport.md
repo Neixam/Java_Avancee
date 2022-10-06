@@ -286,18 +286,26 @@ public class StreamEditor {
    On se propose pour cela de remplacer l'enum Action par une interface et DELETE et PRINT par des records implantant cette interface comme ceci
 
 ```java
-  private sealed interface Action {
-    default String newLine() {
-      return "";
-    }
-    record DeleteAction() implements Action {}
-    record PrintAction(String text) implements Action {
-      @Override
-      public String newLine() {
-        return text;
+public class StreamEditor {
+   private sealed interface Action {
+      record DeleteAction() implements Action {
       }
-    }
-  }
+
+      record PrintAction(String text) implements Action {
+      }
+   }
+
+   public void transform(LineNumberReader lineNumberReader, Writer writer) throws IOException {
+      Objects.requireNonNull(lineNumberReader);
+      Objects.requireNonNull(writer);
+      for (var line = lineNumberReader.readLine(); line != null; line = lineNumberReader.readLine()) {
+         switch (command.deleteOrPrint(line, lineNumberReader.getLineNumber())) {
+            case Action.PrintAction(String text) -> writer.append(text).append('\n');
+            case Action.DeleteAction ignored -> {}
+         }
+      }
+   }
+}
 ```
 
 8. On peut enfin ajouter la commande substitute(pattern, replacement) telle que le code suivant fonctionne
