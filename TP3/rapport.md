@@ -299,3 +299,143 @@ On va utiliser une inner class plutôt qu'une classe interne dans le cas où on
 a un partage de champs entre deux classes.
 
 ## Exercice 4 - The Slice and The Furious: Tokyo Drift
+
+1. Recopier l'interface Slice du premier exercice dans une interface Slice3. Supprimer la classe interne SubArraySlice ainsi que la méthode array(array, from, to) car nous allons les réimplanter et commenter la méthode subSlice(from, to) de l'interface, car nous allons la réimplanter plus tard.
+   Puis déplacer la classe ArraySlice à l'intérieur de la méthode array(array) et transformer celle-ci en classe anonyme.
+   Vérifier que les tests JUnit marqués "Q1" et "Q2" passent.
+
+```java
+public interface Slice3<U> {
+   int size();
+   U get(int index);
+   //Slice<U> subSlice(int from, int to);
+   
+   static <T> Slice3<T> array(T[] array) {
+      Objects.requireNonNull(array);
+      return new Slice3<>() {
+         @Override
+         public int size() {
+            return array.length;
+         }
+
+         @Override
+         public T get(int index) {
+            Objects.checkIndex(index, array.length);
+            return array[index];
+         }
+
+         /*   @Override
+            public Slice<V> subSlice(int from, int to) {
+              Objects.checkFromToIndex(from, to, internArray.length);
+            }
+        */
+         @Override
+         public String toString() {
+            return Arrays.toString(array);
+         }
+      };
+   }
+}
+```
+
+2. On va maintenant chercher à implanter la méthode subSlice(from, to) directement dans l'interface Slice3 comme cela l'implantation sera partagée.
+   Écrire la méthode subSlice(from, to) en utilisant là encore une classe anonyme.
+   Comme l'implantation est dans l'interface, on a pas accès au tableau qui lui n'existe que dans l'implantation dans array(array) mais ce n'est pas gràve car on peut utiliser les méthodes de l'interface.
+   Puis fournissez une implantation à la méthode array(array, from, to).
+   Vérifier que les tests JUnit marqués "Q3" et "Q4" passent.
+
+```java
+public interface Slice3<U> {
+  default Slice3<U> subSlice(int from, int to) {
+    Objects.checkFromToIndex(from, to, size());
+    return new Slice3<>() {
+      @Override
+      public int size() {
+        return to - from;
+      }
+      @Override
+      public U get(int index) {
+        Objects.checkIndex(index, size());
+        return Slice3.this.get(index + from);
+      }
+
+      @Override
+      public String toString() {
+        return Arrays.toString(IntStream.range(0, size())
+                .mapToObj(this::get).toArray());
+      }
+    };
+  }
+   static <T> Slice3<T> array(T[] array, int from, int to) {
+      Objects.requireNonNull(array);
+      Objects.checkFromToIndex(from, to, array.length);
+      return array(array).subSlice(from, to);
+   }
+}
+```
+
+3. Dans quel cas va-t-on utiliser une classe anonyme plutôt qu'une classe interne ?
+
+Il est préférable d'utiliser une classe anonyme plutôt qu'une classe interne
+lorsque l'on veut seulement redéfinir un comportement d'une classe ou interface
+déjà existante.
+
+## Exercice 5 - Slice & Furious
+
+1. Déclarer l'interface Slice4 avec les méthodes size, get(index) et subSlice(from, to) abstraites. De plus, la méthode array(array) peut déléguer son implantation à la méthode array(array, from, to).
+   Pour l'instant, commenter la méthode subSlice(from, to) que l'on implantera plus tard.
+   À la suite du fichier, déclarer une classe non publique SliceImpl implantant l'interface Slice4 et implanter la méthode array(array, from, to).
+   Vérifier que les tests JUnit marqués "Q1", "Q2" et "Q3" passent.
+
+```java
+public interface Slice4<U> {
+  int size();
+  U get(int index);
+  //Slice4<U> subSlice(int from, int to);
+
+  static <T> Slice4<T> array(T[] array) {
+    Objects.requireNonNull(array);
+    return array(array, 0, array.length);
+  }
+  static <T> Slice4<T> array(T[] array, int from, int to) {
+    Objects.requireNonNull(array);
+    Objects.checkFromToIndex(from, to, array.length);
+    return new Slice4<>() {
+      @Override
+      public int size() {
+        return to - from;
+      }
+
+      @Override
+      public T get(int index) {
+        Objects.checkIndex(index, size());
+        return array[index + from];
+      }
+
+      @Override
+      public String toString() {
+        return Arrays.toString(Arrays.stream(array, from, to).toArray());
+      }
+    };
+  }
+}
+```
+
+2. Dé-commenter la méthode subSlice(from, to) et fournissez une implantation de cette méthode.
+   Vérifier que les tests JUnit marqués "Q4" passent.
+
+```java
+@Override
+public Slice4<T> subSlice(int from2, int to) {
+  Objects.checkFromToIndex(from2, to, size());
+  return array(array, from2 + from, to + from);
+}
+```
+
+3. On peut remarquer qu'en programmation objet il y a une toujours une tension entre avoir une seule classe et donc avoir des champs qui ne servent pas vraiment pour certaines instances et avoir plusieurs classes ayant des codes très similaires, mais avec un nombre de champs différents.
+   L'orthodoxie de la POO voudrait que l'on ait juste le nombre de champs qu'il faut, en pratique, on a tendance à ne pas créer trop de classes, car plus on a de code plus c'est difficile de le faire évoluer.
+   À votre avis, pour cet exemple, est-il préférable d'avoir deux classes une pour les tableaux et une pour les tableaux avec des bornes ou une seule classe gérant les deux cas ?
+
+À mon avis il est préférable d'avoir une seule classe qui s'occupe des tableaux avec et sans bornes,
+car comme on l'a vu sur la dernière partie, on peut représenter un tableau sans
+borne comme un tableau avec des bornes.
