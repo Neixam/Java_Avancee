@@ -158,7 +158,7 @@ public class JSONPrinter {
       if (annotation == null) {
          return recordComponent.getName();
       }
-      return annotation.value().isEmpty() ? recordComponent.getName().replace("_", "-") : annotation.value();
+      return annotation.value().isEmpty() ? recordComponent.getName().replace('_', '-') : annotation.value();
    }
 }
 ```
