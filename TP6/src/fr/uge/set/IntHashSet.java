@@ -1,5 +1,6 @@
 package fr.uge.set;
 
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.function.IntConsumer;
 
