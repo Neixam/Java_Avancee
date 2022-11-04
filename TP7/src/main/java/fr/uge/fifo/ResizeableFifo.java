@@ -3,7 +3,6 @@ package fr.uge.fifo;
 import java.util.*;
 
 public class ResizeableFifo<E> extends AbstractQueue<E> {
-  @SuppressWarnings("unchecked")
   private E[] internTab;
   private int size;
   private int head;
@@ -19,7 +18,7 @@ public class ResizeableFifo<E> extends AbstractQueue<E> {
 
   @Override
   public Iterator<E> iterator() {
-    return new Iterator<E>() {
+    return new Iterator<>() {
       private int current = head;
       private int i;
 
