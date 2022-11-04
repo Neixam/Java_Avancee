@@ -338,7 +338,7 @@ public class ResizeableFifo<E> implements Iterable<E> {
   private void upgrade() {
     @SuppressWarnings("unchecked")
     var newInternTab = (E[]) new Object[internTab.length << 1];
-    if (head >= tail) {
+    if (tail != internTab.length) {
       System.arraycopy(internTab, head, newInternTab, 0, internTab.length - head);
       System.arraycopy(internTab, 0, newInternTab, internTab.length - head, size - (internTab.length - head));
     }
@@ -451,7 +451,7 @@ public class ResizeableFifo<E> extends AbstractQueue<E> {
   private void upgrade() {
     @SuppressWarnings("unchecked")
     var newInternTab = (E[]) new Object[internTab.length << 1];
-    if (head >= tail) {
+    if (tail != internTab.length) {
       System.arraycopy(internTab, head, newInternTab, 0, internTab.length - head);
       System.arraycopy(internTab, 0, newInternTab, internTab.length - head, size - (internTab.length - head));
     }
