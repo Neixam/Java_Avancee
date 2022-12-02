@@ -18,6 +18,7 @@ public class Seq2<T> implements Iterable<T> {
     this.mapper = mapper;
   }
 
+  @SuppressWarnings("unchecked")
   public static <T> Seq2<T> from(List<? extends T> elements) {
     Objects.requireNonNull(elements);
     return new Seq2<>(List.copyOf(elements), e -> (T) e);
