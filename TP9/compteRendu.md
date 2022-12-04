@@ -298,12 +298,20 @@ class MatrixGraph<V> implements Graph<V> {
 
 
 ```java
-class MatrixGraph<V> implements Graph<V> {
-   @Override
-   public void edges(int src, EdgeConsumer<? super V> consumer) {
+public interface Graph<T> {
+   int nodeCount();
+
+   /**
+    * Call the consumer with all edges from the source node.
+    * @param src the source node.
+    * @param consumer the consumer called for all edge that
+    *        have src as source node.
+    * @throws NullPointerException if consumer is null.
+    */
+   default void edges(int src, EdgeConsumer<? super T> consumer) {
       Objects.requireNonNull(consumer);
-      Objects.checkIndex(src, nodeCount);
-      neighborStream(src).forEach(dst -> consumer.edge(src, dst, internArray[offset(src, dst)]));
+      Objects.checkIndex(src, nodeCount());
+      neighborStream(src).forEach(dst -> getWeight(src, dst).ifPresent(v -> consumer.edge(src, dst, v)));
    }
 }
 ```
@@ -312,3 +320,61 @@ class MatrixGraph<V> implements Graph<V> {
 
 1. Écrire dans l'interface Graph la méthode createNodeMapGraph et implanter la classe NodeMapGraph (toujours non publique).
    Note: chaque méthode est sensée ne pas prendre plus de 2 ou 3 lignes, tests des préconditions compris.
+
+```java
+public interface Graph<T> {
+   static <T> Graph<T> createNodeMapGraph(int nodeCount) {
+      return new NodeMapGraph<>(nodeCount);
+   }
+}
+
+class NodeMapGraph<T> implements Graph<T> {
+   private final int nodeCount;
+   private final HashMap<Integer, T>[] internHashMap;
+
+   @SuppressWarnings("unchecked")
+   NodeMapGraph(int nodeCount) {
+      if (nodeCount < 0) {
+         throw new IllegalArgumentException("nodeCount must >= 0");
+      }
+      this.nodeCount = nodeCount;
+      internHashMap = (HashMap<Integer, T>[]) new HashMap<?, ?>[nodeCount];
+      for (var i = 0; i < nodeCount; i++) {
+         internHashMap[i] = new HashMap<>();
+      }
+   }
+
+   @Override
+   public int nodeCount() {
+      return nodeCount;
+   }
+
+   @Override
+   public void addEdge(int src, int dst, T weight) {
+      Objects.requireNonNull(weight);
+      Objects.checkIndex(src, nodeCount);
+      Objects.checkIndex(dst, nodeCount);
+      internHashMap[src].put(dst, weight);
+   }
+
+   @Override
+   public Optional<T> getWeight(int src, int dst) {
+      Objects.checkIndex(src, nodeCount);
+      Objects.checkIndex(dst, nodeCount);
+      return Optional.ofNullable(internHashMap[src].get(dst));
+   }
+
+
+   @Override
+   public Iterator<Integer> neighborIterator(int src) {
+      Objects.checkIndex(src, nodeCount);
+      return internHashMap[src].keySet().iterator();
+   }
+
+   @Override
+   public IntStream neighborStream(int src) {
+      Objects.checkIndex(src, nodeCount);
+      return Graph.super.neighborStream(src);
+   }
+}
+```

@@ -1,6 +1,7 @@
 package fr.uge.graph;
 
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.function.IntConsumer;
@@ -11,6 +12,8 @@ import java.util.stream.StreamSupport;
  * An oriented graph with values on edges and not on nodes.
  */
 public interface Graph<T> {
+  int nodeCount();
+
   /**
    * Add an edge between two nodes or replace it
    * if an edge already exists. 
@@ -72,7 +75,11 @@ public interface Graph<T> {
    *        have src as source node.
    * @throws NullPointerException if consumer is null.
    */
-   void edges(int src, EdgeConsumer<? super T> consumer);
+   default void edges(int src, EdgeConsumer<? super T> consumer) {
+     Objects.requireNonNull(consumer);
+     Objects.checkIndex(src, nodeCount());
+     neighborStream(src).forEach(dst -> getWeight(src, dst).ifPresent(v -> consumer.edge(src, dst, v)));
+   }
   
   /**
    * Returns all the vertices that are connected to
