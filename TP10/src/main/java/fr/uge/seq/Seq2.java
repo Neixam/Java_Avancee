@@ -70,10 +70,7 @@ public class Seq2<T> implements Iterable<T> {
   }
 
   public Optional<T> findFirst() {
-    if (elements.length == 0) {
-      return Optional.empty();
-    }
-    return Optional.of(get(0));
+    return Arrays.stream(elements).<T>map(mapper).findFirst();
   }
 
   private Spliterator<T> fromArray(int start, int end) {
