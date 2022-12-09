@@ -56,7 +56,15 @@ public class NumericVec<E> extends AbstractCollection<E> implements Iterable<E> 
   @Override
   public boolean addAll(Collection<? extends E> c) {
     Objects.requireNonNull(c);
-    c.forEach(this::add);
+    if (c instanceof NumericVec<?> vec) {
+      if (internTab.length < size + vec.size) {
+        internTab = Arrays.copyOf(internTab, size + vec.size);
+      }
+      System.arraycopy(vec.internTab, 0, internTab, size, vec.size);
+      size += vec.size;
+    } else {
+      c.forEach(this::add);
+    }
     return true;
   }
 
