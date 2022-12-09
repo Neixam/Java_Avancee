@@ -68,7 +68,7 @@ public class NumericVec<E> extends AbstractCollection<E> implements Iterable<E> 
     return true;
   }
 
-  public <T> NumericVec<T> map(Function<? super E, T> function, Supplier<NumericVec<T>> factory) {
+  public <T> NumericVec<T> map(Function<? super E, T> function, Supplier<? extends NumericVec<T>> factory) {
     var ret = factory.get();
     ret.addAll(Arrays.stream(internTab, 0, size).mapToObj(from).map(function).toList());
     return ret;
