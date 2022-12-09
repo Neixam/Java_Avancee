@@ -27,13 +27,6 @@ class MatrixGraph<V> implements Graph<V> {
   }
 
   @Override
-  public void edges(int src, EdgeConsumer<? super V> consumer) {
-    Objects.requireNonNull(consumer);
-    Objects.checkIndex(src, nodeCount);
-    neighborStream(src).forEach(dst -> consumer.edge(src, dst, internArray[offset(src, dst)]));
-  }
-
-  @Override
   public Iterator<Integer> neighborIterator(int src) {
     Objects.checkIndex(src, nodeCount);
     return new Iterator<>() {
@@ -79,6 +72,11 @@ class MatrixGraph<V> implements Graph<V> {
   public IntStream neighborStream(int src) {
     Objects.checkIndex(src, nodeCount);
     return Graph.super.neighborStream(src);
+  }
+
+  @Override
+  public int nodeCount() {
+    return nodeCount;
   }
 
   @Override

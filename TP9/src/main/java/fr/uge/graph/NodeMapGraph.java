@@ -23,6 +23,11 @@ class NodeMapGraph<T> implements Graph<T> {
   }
 
   @Override
+  public int nodeCount() {
+    return nodeCount;
+  }
+
+  @Override
   public void addEdge(int src, int dst, T weight) {
     Objects.requireNonNull(weight);
     Objects.checkIndex(src, nodeCount);
@@ -37,12 +42,6 @@ class NodeMapGraph<T> implements Graph<T> {
     return Optional.ofNullable(internHashMap[src].get(dst));
   }
 
-  @Override
-  public void edges(int src, EdgeConsumer<? super T> consumer) {
-    Objects.requireNonNull(consumer);
-    Objects.checkIndex(src, nodeCount);
-    internHashMap[src].forEach((dst, weight) -> consumer.edge(src, dst, weight));
-  }
 
   @Override
   public Iterator<Integer> neighborIterator(int src) {

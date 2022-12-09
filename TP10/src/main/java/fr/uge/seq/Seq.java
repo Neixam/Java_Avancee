@@ -47,7 +47,6 @@ public class Seq<T> implements Iterable<T> {
   public Iterator<T> iterator() {
     return new Iterator<>() {
       private int index;
-
       @Override
       public boolean hasNext() {
         return index != size();
@@ -69,10 +68,7 @@ public class Seq<T> implements Iterable<T> {
   }
 
   public Optional<T> findFirst() {
-    if (elements.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of(mapper.apply(elements.get(0)));
+    return elements.stream().<T>map(mapper).findFirst();
   }
 
   private Spliterator<T> fromSplit(Spliterator<?> spliterator) {
